@@ -30,6 +30,10 @@ int set_flag = 0;
 void set_angle ();
 
 
+// time keeping variables
+long current_time = 0;
+long minute_counts = 0;
+long minute_length = 60000;
 void setup() {
   // put your setup code here, to run once:
      Serial.begin(115200);
@@ -67,12 +71,23 @@ void setup() {
       }*/ // TODO: INTEGRATE NTP SERVER TO SET TIME OF THE RTC ACCURATELY WITH LOCATION USING ezTIME
 
     
-
+    current_time = millis();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+    if(millis() - current_time > minute_length)//if the millis reach i minute count
+    {
+      minute_counts++;
+    }
 
+    if (minute_counts>= 60)//if we get to 1hr then proceed to do this
+    {
+        //TODO : READ ENCODER TO GET THE ANGULAR POSITION OF THE STEPPER
+        // TODO: GET THE NEW ANGLE
+        //TODO: MOVE THE STEPPER MOTOR TO THE NEW ANGLE
+      current_time = millis();
+    }
 }
 
 /**************************************************************************/
