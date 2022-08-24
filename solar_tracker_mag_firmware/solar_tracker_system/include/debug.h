@@ -1,10 +1,11 @@
-#include <Arduino.h>
-int DEBUG = 1;
+
 
 #if !defined(DEBUG_H)
+#include <Arduino.h>
+int myDEBUG = 1;
 #define DEBUG_H
 
-#if DEBUG == 1
+#if myDEBUG == 1
 #define debug(x) Serial.print(x)
 #define debugln(x) Serial.println(x)
 
