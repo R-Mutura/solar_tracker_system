@@ -38,9 +38,15 @@ const double pi = 3.14159265358979323846;
 
 #define red_led   16
 #define green_led 17
-#define channel_A 12
+#define channel_A 34
 #define channel_B 13
 #define set_pin 35
+#define microstep_1 4
+#define microstep_2 26
+#define mag_int 33
+#define diagnostic 14
+
+
 //encoder type: https://eu.mouser.com/ProductDetail/Broadcom-Avago/HEDS-5505I06?qs=RuhU64sK2%252Bs%2FooH6iJf%2FsQ%3D%3D
 /*************************/
 int set_flag = 0;
@@ -50,6 +56,11 @@ int encoder_pulses = 0;
 long current_time = 0;
 long minute_counts = 0;
 long minute_length = 60000;
+long timeout_counter = 0;
+long timeout_period = 180; // 3hrs in minutes
+int timeout_flag = 0;
+int home_flag = 0;
+
 
 float get_solar_altitude();
 void set_angle ();
@@ -130,7 +141,7 @@ void loop() {
       current_time = millis();
     }
 
-    if (minute_counts>= 60)//if we get to 1hr then proceed to do this
+    if ((minute_counts>= 60) && (timeout_flag == 0))//if we get to 1hr then proceed to do this
     {
 
         //TODO : READ ENCODER TO GET THE ANGULAR POSITION OF THE STEPPER
@@ -142,6 +153,10 @@ void loop() {
         float new_angle = get_solar_altitude(); //this is the new angle to move to
         debug("New angle = ");
         debugln(new_angle);
+        //! endure angle does not exceed 180 or zero
+        new_angle = (new_angle>180)? 180: new_angle; //angle will not exceed 180 degrees
+        new_angle = (new_angle < 0)  ? 0 : new_angle; //angle should not be less than zero
+
         //TODO: MOVE THE STEPPER MOTOR TO THE NEW ANGLE
         myStepper.moveTo(long (new_angle/0.225));//the variable in move to is absolute from 0  -- 0.225 is the degrees moved per step -- step resulution = 1/8(1600steps/rev)
         myStepper.run();
@@ -156,6 +171,45 @@ void loop() {
         EEPROM.commit();
         //NEW ANGLE SAVED TO EEPROM
     }
+
+    //TODO : CHECK TIME AND ANGLE OF THE STEPPER MOTOR- IF GREATER THAT 180 AND TIME IS 1800 OR GREATER, START TIMER FOR 3 HRS AND THEN RESET
+    
+    //getting current time
+       DateTime now = rtc.now(); 
+       int hour = now.hour();
+       int minutes = now.minute();
+       if((hour >= 18) && (hour < 6))
+       { 
+            if(timeout_flag == 0)
+                {
+                    timeout_flag = 1;
+                    timeout_counter = minute_counts;
+                }
+            
+            else if((timeout_flag == 1) && ((minute_counts - timeout_counter) >timeout_period) && (home_flag ==0 ))
+            {
+              //check if 3 hours has passed and return the angular position of the motor to zero
+                      myStepper.moveTo(long (0));//the variable in move to is absolute from 0  -- 0.225 is the degrees moved per step -- step resulution = 1/8(1600steps/rev)
+                      myStepper.run();
+                      debug("MOVED TO HOME = ");
+                      debugln(0);
+                      home_flag = 1;
+                      
+            }
+
+       }
+
+      else{
+           if(timeout_flag == 1)
+                {
+                    timeout_flag = 0;
+                
+                }
+          else{
+            return;
+          }
+      }
+
 }
 
 /**************************************************************************/
